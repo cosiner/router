@@ -53,6 +53,9 @@ func cleanPath(path string) string {
 			break
 		}
 	}
+	if begin > end {
+		begin = end
+	}
 	return mergeMultipleSlash(path[begin:end])
 }
 

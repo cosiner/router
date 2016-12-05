@@ -140,10 +140,6 @@ func (t *Tree) Add(path string, handler interface{}) error {
 		return errors.New("illegal path or handler")
 	}
 	path = cleanPath(path)
-	if path == "" {
-		t.handler = handler
-		return nil
-	}
 	subtree, _ := handler.(*Tree)
 	fn, _ := handler.(func(interface{}) (interface{}, error))
 	return t.addPath(path, handler, subtree, fn)
