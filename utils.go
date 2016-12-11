@@ -143,17 +143,14 @@ func compareNode(n1, n2 *Tree) int {
 	}
 	if n1.regexp == nil {
 		if n2.regexp == nil {
-			return 0
+			return strings.Compare(n1.catch, n2.catch)
 		}
 		return 1
 	}
 	if n2.regexp == nil {
 		return -1
 	}
-	if n1.regexp.String() == n2.regexp.String() {
-		return 0
-	}
-	return -1
+	return strings.Compare(n1.regexp.String(), n2.regexp.String())
 }
 
 func firstMatchResult(results []MatchResult) MatchResult {

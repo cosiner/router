@@ -41,6 +41,10 @@ func (kvs KeyValues) Get(key string) string {
 	return ""
 }
 
+func (kvs KeyValues) Len() int {
+	return len(kvs)
+}
+
 func (kvs KeyValues) Append(key, value string) KeyValues {
 	return append(kvs, KeyValue{Key: key, Value: value})
 }
