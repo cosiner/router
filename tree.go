@@ -93,9 +93,6 @@ func (t *Tree) matchPath(one, all sortByLvResults, kvs KeyValues, path string, n
 			all = all.Append(kvs, t.handler, lv)
 		}
 	}
-	if path == "" {
-		return one, all
-	}
 
 	currSec, nextSecs := splitBy(path, Separator)
 	for _, child := range t.children {
@@ -117,11 +114,11 @@ func (t *Tree) matchPath(one, all sortByLvResults, kvs KeyValues, path string, n
 				}
 			}
 		case _NODE_STATIC:
-			if child.catch == currSec {
+			if path != "" && child.catch == currSec {
 				one, all = child.matchPath(one, all, newKvs, nextSecs, needOne, needAll, lv+1)
 			}
 		case _NODE_PARAM:
-			if child.regexp == nil || child.regexp.MatchString(currSec) {
+			if path != "" && (child.regexp == nil || child.regexp.MatchString(currSec)) {
 				if child.catch != "" {
 					newKvs = kvs.ExtendAppend(child.catch, currSec)
 					if !needAll {
@@ -132,7 +129,7 @@ func (t *Tree) matchPath(one, all sortByLvResults, kvs KeyValues, path string, n
 			}
 		}
 		if !needAll && len(one) > 0 {
-			return one, all
+			break
 		}
 	}
 
