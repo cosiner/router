@@ -2,6 +2,7 @@ package router
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"sort"
 )
@@ -11,7 +12,8 @@ var Separator byte = '/'
 type nodeType uint8
 
 const (
-	_NODE_STATIC nodeType = iota + 1
+	_NODE_ROOT nodeType = iota
+	_NODE_STATIC
 	_NODE_PARAM
 	_NODE_ANY
 )
@@ -140,47 +142,71 @@ func (t *Tree) Add(path string, handler interface{}) error {
 	if path == "" || handler == nil {
 		return errors.New("illegal path or handler")
 	}
-	path = cleanPath(path)
 	subtree, _ := handler.(*Tree)
+	if subtree == nil {
+		tr, ok := handler.(Tree)
+		if ok {
+			subtree = &tr
+		}
+	}
 	fn, _ := handler.(func(interface{}) (interface{}, error))
 	return t.addPath(path, handler, subtree, fn)
 }
 
+func (t *Tree) Child(path string) (*Tree, error) {
+	path = cleanPath(path)
+	curr := t
+	for path != "" {
+		currSec, nextSecs := splitBy(path, Separator)
+		node, err := parseNode(currSec, nextSecs)
+		if err != nil {
+			return nil, err
+		}
+		curr, err = curr.addChild(&node)
+		if err != nil {
+			return nil, err
+		}
+		path = nextSecs
+	}
+	return curr, nil
+}
+
 func (t *Tree) addPath(path string, handler interface{}, subtree *Tree, fn func(interface{}) (interface{}, error)) error {
-	if path == "" {
-		var err error
-		if subtree != nil {
-			_, err = t.addChild(subtree)
+	child, err := t.Child(path)
+	if err != nil {
+		return err
+	}
+	if subtree != nil {
+		if subtree.nodeType == _NODE_ROOT {
+			for _, c := range subtree.children {
+				_, err = child.addChild(c)
+				if err != nil {
+					break
+				}
+			}
+		} else {
+			if child == subtree {
+				return fmt.Errorf("sub tree is already added")
+			}
+			_, err = child.addChild(subtree)
+		}
+		return err
+	}
+	if fn != nil {
+		child.handler, err = fn(child.handler)
+		if err != nil {
 			return err
 		}
-		if fn != nil {
-			t.handler, err = fn(t.handler)
-			if err != nil {
-				return err
-			}
-			if t.handler == nil {
-				return errors.New("empty handler")
-			}
-			return nil
+		if child.handler == nil {
+			return errors.New("empty handler")
 		}
-		if t.handler != nil {
-			return errors.New("duplicate handler")
-		}
-		t.handler = handler
 		return nil
 	}
-
-	currSec, nextSecs := splitBy(path, Separator)
-	node, err := parseNode(currSec, nextSecs)
-	if err != nil {
-		return err
+	if child.handler != nil {
+		return errors.New("duplicate handler")
 	}
-
-	child, err := t.addChild(&node)
-	if err != nil {
-		return err
-	}
-	return child.addPath(nextSecs, handler, subtree, fn)
+	child.handler = handler
+	return nil
 }
 
 func (t *Tree) addChild(node *Tree) (child *Tree, err error) {
@@ -225,4 +251,32 @@ func (t *Tree) addChild(node *Tree) (child *Tree, err error) {
 		}
 	}
 	return child, nil
+}
+
+func (t *Tree) printPathTree(ctx string) {
+	for _, c := range t.children {
+		var catch string
+		switch c.nodeType {
+		default:
+			continue
+		case _NODE_STATIC:
+			catch = c.catch
+		case _NODE_PARAM:
+			catch = ":" + c.catch
+		case _NODE_ANY:
+			catch = "*" + c.catch
+		}
+		if c.regexp != nil {
+			catch += ":" + c.regexp.String()
+		}
+		curr := ctx + "/" + catch
+		if c.handler != nil {
+			fmt.Println(curr)
+		}
+		c.printPathTree(curr)
+	}
+}
+
+func (t *Tree) PrintPathTree() {
+	t.printPathTree("")
 }

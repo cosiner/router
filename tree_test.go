@@ -238,3 +238,22 @@ func BenchmarkMatch(b *testing.B) {
 		tree.MatchBoth(routes[i%l])
 	}
 }
+
+func TestNodeSort(t *testing.T) {
+	var tree Tree
+	sub, err := tree.Child("/param")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub.Add("/:A:[^ABC]", 1)
+	sub.Add("/A", 2)
+	sub.Add("/B", 3)
+	sub.Add("/C", 3)
+
+	if tree.MatchOne("/param/D").Handler != 1 {
+		t.Fail()
+	}
+	if tree.MatchOne("/param/A").Handler != 2 {
+		t.Fail()
+	}
+}
