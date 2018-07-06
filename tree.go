@@ -210,21 +210,18 @@ func (t *Tree) addPath(path string, handler interface{}, subtree *Tree, fn func(
 }
 
 func (t *Tree) addChild(node *Tree) (child *Tree, err error) {
-	var (
-		l      = len(t.children)
-		result int
-	)
+	l := len(t.children)
 	index := sort.Search(l, func(i int) bool {
 		child := t.children[i]
-		result = compareNode(child, node)
-		return result >= 0
+		return compareNode(child, node) >= 0
 	})
 	if index == l {
 		t.children = extendNodesCap(t.children, 1, false)
 		t.children = append(t.children, node)
 	} else {
-		child := t.children[index]
-		if result == 0 {
+		indexChild := t.children[index]
+		if compareNode(indexChild, node) == 0 {
+			child := indexChild
 			if node.handler != nil && child.handler != nil && child.handler != node.handler {
 				return child, errors.New("duplicate path with different handler")
 			}
@@ -234,6 +231,12 @@ func (t *Tree) addChild(node *Tree) (child *Tree, err error) {
 			if child.catch != "" && node.catch != "" && node.catch != child.catch {
 				return child, errors.New("param with different name is not allowed")
 			}
+			for _, c := range node.children {
+				_, err = child.addChild(c)
+				if err != nil {
+					return child, err
+				}
+			}
 		} else {
 			t.children = extendNodesCap(t.children, 1, true)
 			copy(t.children[index+1:], t.children[index:])
@@ -241,16 +244,7 @@ func (t *Tree) addChild(node *Tree) (child *Tree, err error) {
 		}
 	}
 
-	child = t.children[index]
-	if result == 0 {
-		for _, c := range node.children {
-			_, err = child.addChild(c)
-			if err != nil {
-				return child, err
-			}
-		}
-	}
-	return child, nil
+	return t.children[index], nil
 }
 
 func (t *Tree) printPathTree(ctx string) {
